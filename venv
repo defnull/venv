@@ -13,42 +13,45 @@ is_pip_cmd() {
   return 1
 }
 
-ensure_venv() {
-	command -v $VENV_CMD 2>/dev/null && return 0
-
-	wget -O $VENV_DIR/virtualenv.py $VENV_URL \
-	|| curl -O $VENV_DIR/virtualenv.py $VENV_URL \
-	|| exit 1
-
-	chmod 500 $VENV_DIR/virtualenv.py
-	VENV_CMD="$VENV_DIR/virtualenv.py"
-}
-
 setup() {
-	test -x "$VENV_DIR/env/bin/python" && return 0
-	test -d "$VENV_DIR" || mkdir -p "$VENV_DIR"
-	ensure_venv
-	$VENV_CMD $VENV_DIR/env
-}
+	test -x "$VENV_DIR/bin/python" && return 0
+	
+	if command -v virtualenv 2>/dev/null; then
+	    virtualenv $VENV_DIR
+	else
+	    wget -O /tmp/virtualenv.py $VENV_URL \
+	    || curl -O /tmp/virtualenv.py $VENV_URL \
+	    || exit 1
 
-setup
+	    python /tmp/virtualenv.py $VENV_DIR
+    fi
+}
 
 if [ $# -eq 0 ]; then
-	exec $VENV_DIR/env/bin/python
+    setup
+	exec $VENV_DIR/bin/python
 elif [ $1 = "help" ]; then
 	echo "USAGE:"
 	echo "  venv          Start a python shell"
-	echo "  venv SCRIPT   Run a script installed to the venv"
+	echo "  venv --reset    Delete the current .venv"
+	echo "  venv SCRIPT   Run a script installed to .venv/bin"
 	echo "  venv COMMAND  Run a pip command (e.g. install, search, ...)"
 	echo "  venv MODULE   Run a python module as a script"
-elif [ -x $VENV_DIR/env/bin/$1 ]; then
+elif [ $1 = "--reset" ]; then
+    test -d $VENV_DIR && rm -rf $VENV_DIR
+    setup
+elif [ -x $VENV_DIR/bin/$1 ]; then
+    setup
 	CMD=$1
 	shift 1
-	exec $VENV_DIR/env/bin/$CMD "$@"
+	exec $VENV_DIR/bin/$CMD "$@"
 elif is_pip_cmd $1; then
-	exec $VENV_DIR/env/bin/pip "$@"
+    setup
+	exec $VENV_DIR/bin/pip "$@"
 else
+    setup
 	MOD=$1
 	shift 1
-	exec $VENV_DIR/env/bin/python -m$MOD "$@"
-fi;
+	exec $VENV_DIR/bin/python -m$MOD "$@"
+fi
+
