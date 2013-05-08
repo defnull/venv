@@ -1,57 +1,57 @@
 #!/bin/bash
 
 VENV_DIR="$HOME/.venv"
-VENV_URL="https://raw.github.com/pypa/virtualenv/develop/virtualenv.py"
+VENV_VERSION="1.9.1"
+VENV_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VENV_VERSION}.tar.gz"
 
 VENV_CMD="virtualenv"
 PIP_COMMANDS="help bundle freeze install search uninstall unzip zip"
 
 is_pip_cmd() {
   for word in $PIP_COMMANDS; do
-      [[ $word = $1 ]] && return 0
+    [[ $word = $1 ]] && return 0
   done
   return 1
 }
 
 setup() {
-	test -x "$VENV_DIR/bin/python" && return 0
-	
-	if command -v virtualenv 2>/dev/null; then
-	    virtualenv $VENV_DIR
-	else
-	    wget -O /tmp/virtualenv.py $VENV_URL \
-	    || curl -O /tmp/virtualenv.py $VENV_URL \
-	    || exit 1
+  test -x "$VENV_DIR/bin/python" && return 0
 
-	    python /tmp/virtualenv.py $VENV_DIR
-    fi
+  if command -v virtualenv 2>/dev/null; then
+    virtualenv $VENV_DIR
+  else
+    wget -O /tmp/virtualenv.tgz $VENV_URL \
+    || curl -O /tmp/virtualenv.tgz $VENV_URL \
+    || exit 1
+    (cd /tmp && tar -xzf virtualenv.tgz && rm virtualenv.tgz)
+    (cd "/tmp/virtualenv-${VENV_VERSION}" && python virtualenv.py $VENV_DIR)
+  fi
 }
 
 if [ $# -eq 0 ]; then
-    setup
-	exec $VENV_DIR/bin/python
+  setup
+  exec $VENV_DIR/bin/python
 elif [ $1 = "help" ]; then
-	echo "USAGE:"
-	echo "  venv          Start a python shell"
-	echo "  venv --reset    Delete the current .venv"
-	echo "  venv SCRIPT   Run a script installed to .venv/bin"
-	echo "  venv COMMAND  Run a pip command (e.g. install, search, ...)"
-	echo "  venv MODULE   Run a python module as a script"
+  echo "USAGE:"
+  echo "  venv          Start a python shell"
+  echo "  venv --reset    Delete the current .venv"
+  echo "  venv SCRIPT   Run a script installed to .venv/bin"
+  echo "  venv COMMAND  Run a pip command (e.g. install, search, ...)"
+  echo "  venv MODULE   Run a python module as a script"
 elif [ $1 = "--reset" ]; then
-    test -d $VENV_DIR && rm -rf $VENV_DIR
-    setup
+  test -d $VENV_DIR && rm -rf $VENV_DIR
+  setup
 elif [ -x $VENV_DIR/bin/$1 ]; then
-    setup
-	CMD=$1
-	shift 1
-	exec $VENV_DIR/bin/$CMD "$@"
+  setup
+  CMD=$1
+  shift 1
+  exec $VENV_DIR/bin/$CMD "$@"
 elif is_pip_cmd $1; then
-    setup
-	exec $VENV_DIR/bin/pip "$@"
+  setup
+  exec $VENV_DIR/bin/pip "$@"
 else
-    setup
-	MOD=$1
-	shift 1
-	exec $VENV_DIR/bin/python -m$MOD "$@"
+  setup
+  MOD=$1
+  shift 1
+  exec $VENV_DIR/bin/python -m$MOD "$@"
 fi
-
