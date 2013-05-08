@@ -1,8 +1,10 @@
 #!/bin/bash
 
-VENV_DIR="$HOME/.venv"
 VENV_VERSION="1.9.1"
 VENV_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-${VENV_VERSION}.tar.gz"
+VENV_PY=${VENV_PY:-2.7}
+VENV_BASE="$HOME/.venv"
+VENV_DIR="$VENV_BASE/$VENV_PY"
 
 VENV_CMD="virtualenv"
 PIP_COMMANDS="help bundle freeze install search uninstall unzip zip"
@@ -16,16 +18,25 @@ is_pip_cmd() {
 
 setup() {
   test -x "$VENV_DIR/bin/python" && return 0
+  test -d "$VENV_DIR" || mkdir -p "$VENV_DIR"
 
   if command -v virtualenv 2>/dev/null; then
-    virtualenv $VENV_DIR
-  else
-    wget -O /tmp/virtualenv.tgz $VENV_URL \
-    || curl -O /tmp/virtualenv.tgz $VENV_URL \
-    || exit 1
-    (cd /tmp && tar -xzf virtualenv.tgz && rm virtualenv.tgz)
-    (cd "/tmp/virtualenv-${VENV_VERSION}" && python virtualenv.py $VENV_DIR)
+    virtualenv$VENV_PY "$VENV_DIR"
+    return 0
   fi
+
+  if [ ! -f "$VENV_BASE/virtualenv-${VENV_VERSION}.tar.gz" ]; then
+    wget -O "$VENV_BASE/virtualenv-${VENV_VERSION}.tar.gz" $VENV_URL \
+    || curl -O "$VENV_BASE/virtualenv-${VENV_VERSION}.tar.gz" $VENV_URL \
+    || exit 1
+  fi
+
+  if [ ! -d "$VENV_BASE/virtualenv-${VENV_VERSION}" ]; then
+    (cd "$VENV_BASE" && tar -xzf "virtualenv-${VENV_VERSION}.tar.gz")
+  fi
+
+  (cd "/tmp/virtualenv-${VENV_VERSION}" \
+   && python$VENV_PY virtualenv.py "$VENV_DIR")
 }
 
 if [ $# -eq 0 ]; then
@@ -40,6 +51,9 @@ elif [ $1 = "help" ]; then
   echo "  venv MODULE   Run a python module as a script"
 elif [ $1 = "--reset" ]; then
   test -d $VENV_DIR && rm -rf $VENV_DIR
+  setup
+elif [ $1 = "--reset-all" ]; then
+  test -d $VENV_BASE && rm -rf $VENV_BASE
   setup
 elif [ -x $VENV_DIR/bin/$1 ]; then
   setup
