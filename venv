@@ -35,7 +35,7 @@ setup() {
     (cd "$VENV_BASE" && tar -xzf "virtualenv-${VENV_VERSION}.tar.gz")
   fi
 
-  (cd "/tmp/virtualenv-${VENV_VERSION}" \
+  (cd "$VENV_BASE/virtualenv-${VENV_VERSION}" \
    && python$VENV_PY virtualenv.py "$VENV_DIR")
 }
 
